@@ -1,5 +1,6 @@
 package org.dsc.af.az;
 
+import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.util.HashMap;
@@ -7,6 +8,10 @@ import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.dsc.af.AmfLoc;
 import org.dsc.af.model.Pais;
@@ -89,8 +94,12 @@ public class AzWS {
 
          requestUrl = helper.sign(params);
 
+         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+         DocumentBuilder db = dbf.newDocumentBuilder();
+         Document doc = db.parse(requestUrl);
+
          DSC.A().log("AmfWS::requestAmazonPrecio() Signed requestUrl is \"" + requestUrl + "\"");
-         precio = fetchPrice(requestUrl);
+         precio = fetchPrice(doc);
          DSC.A().log("AmfWS::requestAmazonPrecio() Price precioFinal is \"" + precio + "\"");
          if (AmfLoc.UK.equals(pais)) {
             precio = AzWS.pounds2euros(precio);
@@ -101,12 +110,108 @@ public class AzWS {
       return precio;
    }
 
-   private static double fetchPrice(String requestUrl) {
-      double precio = PRECIO_ND;
+   public static void searchProducts(Pais pais, String search) {
       try {
+         String AWS_ACCESS_KEY_ID = "AKIAJCQUYDWQX4K2IB4A";
+         String AWS_SECRET_KEY = "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";
+         String ENDPOINT = "webservices.amazon." + pais.code();
+         SRHelp helper = null;
+         try {
+            helper = SRHelp.getInstance(ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_KEY);
+         } catch (Exception e) {
+            e.printStackTrace();
+         }
+
+         String requestUrl = null;
+/*
+ he parameters that apply to the largest number of search indices are shown in the following table.
+Parameter   Valid Search Indices
+BrowseNode  Every index except All and Blended
+Condition   Every index except All and Blended
+Keywords    All
+MaximumPrice   Every index except All and Blended
+MinimumPrice   Every index except All and Blended
+Title    Every index except All and Blended
+
+ItemSearch requires that you specify a search index and at least one of the following parameters:
+
+    Actor
+
+    Artist
+
+    AudienceRating
+
+    Author
+
+    Brand
+
+    BrowseNode 
+
+
+    Composer
+
+    Conductor
+
+    Director
+
+    Keywords
+
+    Manufacturer 
+
+   
+
+    MusicLabel
+
+    Orchestra
+
+    Power
+
+    Publisher
+
+    Title 
+ */
+         Map<String, String> params = new HashMap<String, String>();
+         params.put("Service", "AWSECommerceService");
+         params.put("Version", "2011-08-01");
+         params.put("Operation", "ItemSearch");
+         params.put("Title", search);
+         // allowed categories "Music", "DVD", "VideoGames"
+         params.put("SearchIndex", "DVD");
+         params.put("ResponseGroup", "Medium");
+         params.put("AssociateTag", pais.tag());
+         
+         params.put("ItemPage", "5");
+         
+         requestUrl = helper.sign(params);
+
          DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
          DocumentBuilder db = dbf.newDocumentBuilder();
          Document doc = db.parse(requestUrl);
+
+         DOMSource domSource = new DOMSource(doc);
+         StringWriter writer = new StringWriter();
+         StreamResult result = new StreamResult(writer);
+         TransformerFactory tf = TransformerFactory.newInstance();
+         Transformer transformer = tf.newTransformer();
+         transformer.transform(domSource, result);
+         System.out.println("XML IN String format is: \n" + writer.toString());
+
+      } catch (Exception e) {
+         DSC.A().log("recuperarPrecio request Exception = " + e);
+      }
+   }
+
+   private static double fetchPrice(final Document doc) {
+      double precio = PRECIO_ND;
+      try {
+         DOMSource domSource = new DOMSource(doc);
+         StringWriter writer = new StringWriter();
+         StreamResult result = new StreamResult(writer);
+         TransformerFactory tf = TransformerFactory.newInstance();
+         Transformer transformer = tf.newTransformer();
+         transformer.transform(domSource, result);
+         System.out.println("XML IN String format is: \n" + writer.toString());
+
          Node priceNode = doc.getElementsByTagName("FormattedPrice").item(0);
          String precioNode = priceNode.getTextContent();
          DSC.A().log("AmfWS::fetchPrice() precioNode=" + precioNode);
