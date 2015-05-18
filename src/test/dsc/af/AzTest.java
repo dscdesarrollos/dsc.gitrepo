@@ -8,15 +8,10 @@ public class AzTest {
    public static void main(String[] args) {
       try {
          AzWS azws = new AzWS();
-         double ret = azws.requestAmazonPrecio(AmfLoc.ES, "B00HWQVT7I");
-         
-         azws.searchProducts(AmfLoc.ES, "X-Men Origins");
+         azws.itemSearch(AmfLoc.ES, "X-Men Origins");
+         double ret = azws.itemLookup(AmfLoc.ES, "B00HWQVT7I");
       } catch (Exception e) {
-         // TODO Auto-generated catch block
          e.printStackTrace();
       }
-      
-
    }
-
 }

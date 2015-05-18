@@ -19,8 +19,10 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
 public class Coin {
+   
+   public static final double PRECIO_ND = 0xFFFFFFFF;
+   
    private static long lastTimeStamp = 0;
-
    private static Map<String, BigDecimal> euroTable = new HashMap<String, BigDecimal>();
    private static Map<String, BigDecimal> coinTable = new HashMap<String, BigDecimal>();
 
